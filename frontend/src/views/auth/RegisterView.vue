@@ -198,13 +198,24 @@ const handleRegister = async () => {
   if (!valid) return
   
   try {
-    // 过滤掉 confirmPassword 字段
+    // 过滤掉 confirmPassword 字段，并处理空字符串
     const { confirmPassword, ...registerData } = registerForm
-    await authStore.register(registerData as RegisterForm)
+    
+    // 处理可选字段，将空字符串转换为undefined
+    const cleanedData = {
+      ...registerData,
+      phone: registerData.phone?.trim() || undefined,
+      school: registerData.school?.trim() || undefined
+    }
+    
+    console.log('发送注册数据:', cleanedData)
+    await authStore.register(cleanedData as RegisterForm)
     ElMessage.success('注册成功')
     router.push('/dashboard')
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || '注册失败')
+    console.error('注册失败:', error)
+    console.error('错误响应:', error.response?.data)
+    ElMessage.error(error.response?.data?.details || error.response?.data?.message || '注册失败')
   }
 }
 </script>
