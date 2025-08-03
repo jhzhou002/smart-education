@@ -42,56 +42,51 @@ const chapters = ref<Chapter[]>([])
 const fetchChapters = async () => {
   loading.value = true
   try {
-    // TODO: 调用API获取章节列表
-    // const response = await chaptersApi.getChapters()
-    // chapters.value = response.data
+    const response = await fetch('/api/chapters')
+    const result = await response.json()
     
-    // 临时数据
-    chapters.value = [
-      {
-        id: 1,
-        name: '集合与函数概念',
-        description: '学习集合的基本概念和函数的定义、性质',
-        order_index: 1,
-        grade: '高一',
-        is_active: true,
-        created_at: '',
-        topics: []
-      },
-      {
-        id: 2,
-        name: '三角函数',
-        description: '学习三角函数的定义、图象和性质',
-        order_index: 2,
-        grade: '高一',
-        is_active: true,
-        created_at: '',
-        topics: []
-      },
-      {
-        id: 3,
-        name: '数列',
-        description: '学习数列的概念、等差数列和等比数列',
-        order_index: 3,
-        grade: '高二',
-        is_active: true,
-        created_at: '',
-        topics: []
-      }
-    ]
+    if (response.ok) {
+      chapters.value = result.data || []
+    } else {
+      ElMessage.error(result.message || '获取章节列表失败')
+    }
   } catch (error) {
+    console.error('获取章节列表失败:', error)
     ElMessage.error('获取章节列表失败')
-    console.error(error)
   } finally {
     loading.value = false
   }
 }
 
 // 选择章节
-const selectChapter = (chapter: Chapter) => {
-  ElMessage.info(`选择了章节：${chapter.name}，即将开始测试`)
-  // TODO: 跳转到测试页面
-  router.push(`/assessment/test/${chapter.id}`)
+const selectChapter = async (chapter: Chapter) => {
+  try {
+    ElMessage.info(`开始生成${chapter.name}的测评题目...`)
+    
+    const response = await fetch('/api/assessments/start', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({
+        chapter_id: chapter.id,
+        question_count: 10
+      })
+    })
+    
+    const result = await response.json()
+    
+    if (response.ok) {
+      ElMessage.success('题目生成成功，开始测评')
+      router.push(`/assessment/test/${result.data.assessment_id}`)
+    } else {
+      ElMessage.error(result.message || '开始测评失败')
+    }
+  } catch (error) {
+    console.error('开始测评失败:', error)
+    ElMessage.error('开始测评失败')
+  }
 }
 
 onMounted(() => {

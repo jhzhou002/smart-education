@@ -147,93 +147,75 @@ const getDifficultyType = (difficulty: string) => {
 // 获取章节列表
 const fetchChapters = async () => {
   try {
-    // TODO: 调用API获取章节列表
-    // const response = await chaptersApi.getChapters()
-    // chapters.value = response.data
+    const response = await fetch('/api/chapters')
+    const result = await response.json()
     
-    // 临时数据
-    chapters.value = [
-      {
-        id: 1,
-        name: '集合与函数概念',
-        description: '',
-        order_index: 1,
-        grade: '高一',
-        is_active: true,
-        created_at: ''
-      },
-      {
-        id: 2,
-        name: '三角函数',
-        description: '',
-        order_index: 2,
-        grade: '高一',
-        is_active: true,
-        created_at: ''
-      },
-      {
-        id: 3,
-        name: '数列',
-        description: '',
-        order_index: 3,
-        grade: '高二',
-        is_active: true,
-        created_at: ''
-      }
-    ]
+    if (response.ok) {
+      chapters.value = result.data || []
+    } else {
+      ElMessage.error('获取章节列表失败')
+    }
   } catch (error) {
+    console.error('获取章节列表失败:', error)
     ElMessage.error('获取章节列表失败')
   }
 }
 
-// 获取练习题目
+// 获取练习题目  
 const fetchQuestions = async () => {
-  if (!selectedChapter.value) return
-  
   loading.value = true
+  console.log('🎯 开始获取练习题目')
+  console.log('选择的章节:', selectedChapter.value)
+  console.log('选择的难度:', selectedDifficulty.value)
+  
   try {
-    // TODO: 调用API获取练习题目
-    // const response = await practiceApi.getQuestions({
-    //   chapter_id: selectedChapter.value,
-    //   difficulty: selectedDifficulty.value,
-    //   count: 10
-    // })
-    // questions.value = response.data
-    
-    // 临时数据
-    questions.value = [
-      {
-        id: 1,
-        topic_id: 1,
-        question_text: '集合A = {1, 2, 3}，集合B = {2, 3, 4}，则A∩B = ?',
-        question_type: '单选',
-        difficulty: '基础',
-        options: [
-          { key: 'A', text: '{1, 2}' },
-          { key: 'B', text: '{2, 3}' },
-          { key: 'C', text: '{3, 4}' },
-          { key: 'D', text: '{1, 4}' }
-        ],
-        correct_answer: 'B',
-        solution: '集合的交集是同时属于两个集合的元素组成的集合。A和B的公共元素是2和3，所以A∩B = {2, 3}。',
-        usage_count: 0,
-        correct_rate: 0,
-        created_at: ''
-      },
-      {
-        id: 2,
-        topic_id: 2,
-        question_text: '函数f(x) = x² + 1的定义域是___',
-        question_type: '填空',
-        difficulty: '基础',
-        correct_answer: 'R',
-        solution: '二次函数f(x) = x²+ 1对于任意实数x都有意义，因此定义域为实数集R。',
-        usage_count: 0,
-        correct_rate: 0,
-        created_at: ''
+    const params = new URLSearchParams()
+    if (selectedChapter.value) {
+      console.log('📚 获取章节详情...')
+      // 首先获取该章节的知识点
+      const chaptersResponse = await fetch(`/api/chapters/${selectedChapter.value}`)
+      const chaptersResult = await chaptersResponse.json()
+      console.log('章节详情响应:', chaptersResult)
+      
+      if (chaptersResult.data?.topics?.length > 0) {
+        // 使用第一个知识点的ID
+        const topicId = chaptersResult.data.topics[0].id.toString()
+        params.append('topic_id', topicId)
+        console.log('🎯 使用知识点ID:', topicId)
+      } else {
+        console.log('⚠️ 该章节没有知识点')
       }
-    ]
+    }
+    if (selectedDifficulty.value) {
+      params.append('difficulty', selectedDifficulty.value)
+    }
+    // 尝试生成新题目
+    params.append('generate', 'true')
+
+    const requestUrl = `/api/practice/questions?${params}`
+    console.log('🔗 请求URL:', requestUrl)
+    console.log('🔑 Token:', localStorage.getItem('token') ? '已设置' : '未设置')
+
+    const response = await fetch(requestUrl, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+    
+    console.log('📡 响应状态:', response.status)
+    const result = await response.json()
+    console.log('📡 响应数据:', result)
+    
+    if (response.ok) {
+      questions.value = result.data || []
+      if (questions.value.length === 0) {
+        ElMessage.info('暂无题目，请点击生成题目按钮')
+      }
+    } else {
+      ElMessage.error(result.message || '获取题目失败')
+    }
   } catch (error) {
+    console.error('获取题目失败:', error)
     ElMessage.error('获取题目失败')
   } finally {
     loading.value = false
@@ -242,30 +224,56 @@ const fetchQuestions = async () => {
 
 // 生成题目
 const generateQuestions = async () => {
+  if (!selectedChapter.value) {
+    ElMessage.warning('请先选择章节')
+    return
+  }
+  
   ElMessage.info('正在生成题目...')
-  // TODO: 调用Kimi API生成题目
   await fetchQuestions()
 }
 
 // 提交答案
 const submitAnswer = async (question: PracticeQuestion) => {
   const userAnswer = userAnswers[question.id]
-  if (!userAnswer) return
+  if (!userAnswer) {
+    ElMessage.warning('请先选择答案')
+    return
+  }
   
   try {
-    // TODO: 调用API提交答案
-    // const response = await practiceApi.submitAnswer({
-    //   question_id: question.id,
-    //   answer: userAnswer
-    // })
+    const response = await fetch('/api/practice/submit-answer', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({
+        question_id: question.id,
+        user_answer: userAnswer,
+        time_spent: 0
+      })
+    })
     
-    // 临时判断
-    const isCorrect = userAnswer === question.correct_answer
-    questionResults[question.id] = { is_correct: isCorrect }
-    submittedQuestions.value.add(question.id)
+    const result = await response.json()
     
-    ElMessage.success(isCorrect ? '回答正确!' : '回答错误，请查看解析')
+    if (response.ok) {
+      questionResults[question.id] = { is_correct: result.data.is_correct }
+      submittedQuestions.value.add(question.id)
+      
+      // 更新题目的正确答案和解析
+      const questionIndex = questions.value.findIndex(q => q.id === question.id)
+      if (questionIndex !== -1) {
+        questions.value[questionIndex].correct_answer = result.data.correct_answer
+        questions.value[questionIndex].solution = result.data.solution
+      }
+      
+      ElMessage.success(result.data.is_correct ? '回答正确!' : '回答错误，请查看解析')
+    } else {
+      ElMessage.error(result.message || '提交答案失败')
+    }
   } catch (error) {
+    console.error('提交答案失败:', error)
     ElMessage.error('提交答案失败')
   }
 }
