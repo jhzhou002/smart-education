@@ -1,8 +1,6 @@
 <template>
   <div class="info-view">
     <div class="container">
-      <el-page-header @back="$router.push('/dashboard')" content="个人信息" />
-      
       <div class="profile-content">
         <el-card class="profile-card">
           <div class="profile-header">

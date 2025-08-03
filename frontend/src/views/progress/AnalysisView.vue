@@ -1,8 +1,6 @@
 <template>
   <div class="analysis-view">
     <div class="container">
-      <el-page-header @back="$router.push('/progress/overview')" content="详细分析" />
-      
       <div class="analysis-content">
         <h2>学习数据分析</h2>
         

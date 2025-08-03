@@ -207,6 +207,15 @@ const handleUserCommand = (command: string) => {
 
 .sidebar-nav :deep(.el-menu-item.is-active) {
   background-color: #1890ff !important;
+  color: #ffffff !important;
+}
+
+.sidebar-nav :deep(.el-menu-item.is-active span) {
+  color: #ffffff !important;
+}
+
+.sidebar-nav :deep(.el-menu-item.is-active .el-icon) {
+  color: #ffffff !important;
 }
 
 .sidebar-footer {

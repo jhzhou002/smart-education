@@ -1,8 +1,6 @@
 <template>
   <div class="overview-view">
     <div class="container">
-      <el-page-header @back="$router.push('/dashboard')" content="学习进度" />
-      
       <div class="progress-content">
         <h2>学习进度概览</h2>
         

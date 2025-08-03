@@ -1,8 +1,6 @@
 <template>
   <div class="chapters-view">
     <div class="container">
-      <el-page-header @back="$router.push('/dashboard')" content="基础测试" />
-      
       <div class="chapters-content">
         <h2>选择测试章节</h2>
         <p class="subtitle">选择你想要测试的数学章节，了解自己的基础水平</p>

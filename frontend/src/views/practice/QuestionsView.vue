@@ -1,8 +1,6 @@
 <template>
   <div class="questions-view">
     <div class="container">
-      <el-page-header @back="$router.push('/dashboard')" content="练习中心" />
-      
       <div class="practice-content">
         <div class="practice-header">
           <h2>题目练习</h2>

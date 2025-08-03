@@ -1,8 +1,6 @@
 <template>
   <div class="settings-view">
     <div class="container">
-      <el-page-header @back="$router.push('/profile/info')" content="设置" />
-      
       <div class="settings-content">
         <el-card class="password-settings">
           <template #header>

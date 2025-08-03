@@ -1,8 +1,6 @@
 <template>
   <div class="overview-view">
     <div class="container">
-      <el-page-header @back="$router.push('/dashboard')" content="学习计划" />
-      
       <div class="overview-content">
         <div class="plan-header">
           <h2>我的学习计划</h2>

@@ -1,8 +1,6 @@
 <template>
   <div class="result-view">
     <div class="container">
-      <el-page-header @back="$router.push('/assessment/chapters')" content="测试结果" />
-      
       <div class="result-content">
         <el-card class="result-summary">
           <div class="summary-header">

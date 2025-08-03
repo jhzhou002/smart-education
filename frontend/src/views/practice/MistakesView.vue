@@ -1,8 +1,6 @@
 <template>
   <div class="mistakes-view">
     <div class="container">
-      <el-page-header @back="$router.push('/practice/questions')" content="错题本" />
-      
       <div class="mistakes-content">
         <h2>我的错题</h2>
         <p class="subtitle">复习错题，巩固薄弱知识点</p>

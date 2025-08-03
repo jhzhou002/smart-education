@@ -1,8 +1,6 @@
 <template>
   <div class="tasks-view">
     <div class="container">
-      <el-page-header @back="$router.push('/learning/overview')" :content="`任务详情 - ${task?.title}`" />
-      
       <div class="task-content" v-if="task">
         <el-card class="task-info">
           <div class="task-header">
