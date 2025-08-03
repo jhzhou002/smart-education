@@ -198,7 +198,9 @@ const handleRegister = async () => {
   if (!valid) return
   
   try {
-    await authStore.register(registerForm)
+    // 过滤掉 confirmPassword 字段
+    const { confirmPassword, ...registerData } = registerForm
+    await authStore.register(registerData as RegisterForm)
     ElMessage.success('注册成功')
     router.push('/dashboard')
   } catch (error: any) {
