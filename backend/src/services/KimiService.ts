@@ -3,7 +3,7 @@ import { config } from 'dotenv'
 
 config()
 
-const KIMI_API_KEY = process.env.KIMI_API_KEY
+const KIMI_API_KEY = process.env.KIMI_API_KEY || ''
 const KIMI_BASE_URL = process.env.KIMI_BASE_URL || 'https://api.moonshot.cn'
 
 interface KimiResponse {

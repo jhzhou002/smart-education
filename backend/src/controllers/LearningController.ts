@@ -5,6 +5,7 @@ import { Assessment } from '../models/Assessment'
 import { Chapter } from '../models/Chapter'
 import { Topic } from '../models/Topic'
 import { User } from '../models/User'
+import { PracticeRecord } from '../models/PracticeRecord'
 import { KimiService } from '../services/KimiService'
 import { Op } from 'sequelize'
 
@@ -84,7 +85,7 @@ export class LearningController {
 
       // 为重点章节创建学习任务
       const tasks = await Promise.all(
-        chaptersToFocus.map(async (chapterName, index) => {
+        chaptersToFocus.map(async (chapterName: string, index: number) => {
           const chapter = await Chapter.findOne({
             where: { name: chapterName, is_active: true }
           })
@@ -407,7 +408,7 @@ export class LearningController {
       })
 
       // 获取练习记录
-      const practiceRecords = await require('../models/PracticeRecord').PracticeRecord.findAll({
+      const practiceRecords = await PracticeRecord.findAll({
         where: { user_id: userId },
         order: [['created_at', 'DESC']],
         limit: 50
