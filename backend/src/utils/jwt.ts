@@ -1,4 +1,4 @@
-import jwt, { SignOptions } from 'jsonwebtoken'
+import jwt from 'jsonwebtoken'
 import { config } from 'dotenv'
 
 config()
@@ -13,10 +13,7 @@ export interface JwtPayload {
 }
 
 export function generateToken(payload: JwtPayload): string {
-  const options: SignOptions = {
-    expiresIn: JWT_EXPIRES_IN
-  }
-  return jwt.sign(payload, JWT_SECRET, options)
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' })
 }
 
 export function verifyToken(token: string): JwtPayload {
