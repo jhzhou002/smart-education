@@ -11,9 +11,14 @@ export class PracticeController {
    * 获取练习题目
    */
   static async getPracticeQuestions(req: Request, res: Response) {
+    console.log('🎯 收到练习题目请求')
+    console.log('请求参数:', req.query)
+    console.log('用户信息:', req.user)
+    
     try {
       const userId = req.user?.userId
       if (!userId) {
+        console.log('❌ 用户未认证')
         return res.status(401).json({ message: '用户未认证' })
       }
 
@@ -41,6 +46,8 @@ export class PracticeController {
       }
 
       if (shouldGenerate && topic_id) {
+        console.log('🔄 开始生成题目，知识点ID:', topic_id)
+        
         // 获取知识点信息
         const topic = await Topic.findOne({
           where: { id: topic_id, is_active: true },
@@ -54,13 +61,16 @@ export class PracticeController {
         })
 
         if (topic) {
+          console.log('📚 找到知识点:', topic.name)
           try {
+            console.log('🤖 调用Kimi API生成题目...')
             // 使用Kimi API生成题目
             const generatedQuestions = await KimiService.generatePracticeQuestions(
               topic.name,
               difficulty as string || '基础',
               Math.max(Number(pageSize), 5)
             )
+            console.log('✅ Kimi API返回题目数量:', generatedQuestions.length)
 
             // 保存生成的题目
             await Promise.all(
@@ -90,11 +100,13 @@ export class PracticeController {
               })
             )
 
-            console.log(`成功为知识点 ${topic.name} 生成练习题目`)
+            console.log(`✅ 成功为知识点 ${topic.name} 生成练习题目`)
           } catch (error) {
-            console.error('生成练习题目失败:', error)
+            console.error('❌ 生成练习题目失败:', error)
             // 继续使用现有题目，不阻断流程
           }
+        } else {
+          console.log('❌ 未找到知识点, ID:', topic_id)
         }
       }
 
