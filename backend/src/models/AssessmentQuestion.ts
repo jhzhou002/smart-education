@@ -67,6 +67,34 @@ export class AssessmentQuestion extends Model {
   is_correct!: boolean
 
   @Column({
+    type: DataType.TEXT,
+    allowNull: true,
+    comment: '题目解答过程'
+  })
+  solution?: string
+
+  @Column({
+    type: DataType.ENUM('基础', '中等', '困难'),
+    allowNull: false,
+    defaultValue: '基础'
+  })
+  difficulty!: '基础' | '中等' | '困难'
+
+  @Column({
+    type: DataType.JSON,
+    allowNull: true,
+    comment: '涉及的知识点'
+  })
+  knowledge_points?: any
+
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    defaultValue: 1
+  })
+  order_index!: number
+
+  @Column({
     type: DataType.STRING(100),
     allowNull: true
   })

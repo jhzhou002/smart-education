@@ -37,14 +37,15 @@ app.get('/health', (req, res) => {
 // API 路由
 import authRoutes from './routes/auth'
 import chaptersRoutes from './routes/chapters'
+import assessmentRoutes from './routes/assessments'
+import practiceRoutes from './routes/practice'
+import learningRoutes from './routes/learning'
 
 app.use('/api/auth', authRoutes)
 app.use('/api/chapters', chaptersRoutes)
-// app.use('/api/assessments', require('./routes/assessments'))
-// app.use('/api/learning-plans', require('./routes/learning-plans'))
-// app.use('/api/practice', require('./routes/practice'))
-// app.use('/api/progress', require('./routes/progress'))
-// app.use('/api/kimi', require('./routes/kimi'))
+app.use('/api/assessments', assessmentRoutes)
+app.use('/api/practice', practiceRoutes)
+app.use('/api/learning', learningRoutes)
 
 // 404 处理
 app.use('*', (req, res) => {

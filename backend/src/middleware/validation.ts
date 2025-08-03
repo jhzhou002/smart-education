@@ -3,13 +3,17 @@ import Joi from 'joi'
 
 export function validate(schema: Joi.ObjectSchema) {
   return (req: Request, res: Response, next: NextFunction) => {
+    console.log('验证请求数据:', JSON.stringify(req.body, null, 2))
     const { error } = schema.validate(req.body)
     
     if (error) {
       const errorMessage = error.details.map(detail => detail.message).join(', ')
+      console.log('验证失败:', errorMessage)
+      console.log('错误详情:', error.details)
       return res.status(400).json({ message: '请求数据验证失败', details: errorMessage })
     }
     
+    console.log('验证通过')
     next()
   }
 }
@@ -39,11 +43,11 @@ export const registerSchema = Joi.object({
       'string.max': '姓名长度不能超过50位',
       'any.required': '姓名为必填项'
     }),
-  phone: Joi.string().pattern(/^1[3-9]\d{9}$/).optional()
+  phone: Joi.string().pattern(/^1[3-9]\d{9}$/).allow(null).optional()
     .messages({
       'string.pattern.base': '手机号格式不正确'
     }),
-  school: Joi.string().max(100).optional(),
+  school: Joi.string().max(100).allow(null).optional(),
   grade: Joi.string().valid('高一', '高二', '高三').required()
     .messages({
       'any.only': '年级必须是高一、高二或高三',
