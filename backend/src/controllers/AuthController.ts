@@ -1,4 +1,5 @@
 import { Request, Response } from 'express'
+import { Op } from 'sequelize'
 import { User } from '../models/User'
 import { generateToken } from '../utils/jwt'
 
@@ -11,7 +12,7 @@ export class AuthController {
       // 检查用户是否已存在
       const existingUser = await User.findOne({
         where: {
-          [require('sequelize').Op.or]: [
+          [Op.or]: [
             { email },
             { username }
           ]
