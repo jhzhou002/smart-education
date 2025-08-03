@@ -41,16 +41,18 @@
           prefix-icon="Lock"
           type="password"
           show-password
+          @input="handlePasswordChange"
         />
       </el-form-item>
       
       <el-form-item prop="confirmPassword">
         <el-input
-          v-model="confirmPassword"
+          v-model="registerForm.confirmPassword"
           placeholder="确认密码"
           prefix-icon="Lock"
           type="password"
           show-password
+          @input="() => registerFormRef?.validateField('confirmPassword')"
         />
       </el-form-item>
       
@@ -104,7 +106,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
@@ -116,15 +118,14 @@ const authStore = useAuthStore()
 // 表单引用
 const registerFormRef = ref<FormInstance>()
 
-// 确认密码
-const confirmPassword = ref('')
 
 // 表单数据
-const registerForm = reactive<RegisterForm>({
+const registerForm = reactive<RegisterForm & { confirmPassword: string }>({
   username: '',
   name: '',
   email: '',
   password: '',
+  confirmPassword: '',
   grade: '高一',
   school: '',
   phone: ''
@@ -132,14 +133,32 @@ const registerForm = reactive<RegisterForm>({
 
 // 确认密码验证
 const validateConfirmPassword = (rule: any, value: any, callback: any) => {
-  if (value === '') {
+  if (!value) {
     callback(new Error('请再次输入密码'))
-  } else if (value !== registerForm.password) {
+    return
+  }
+  
+  if (value !== registerForm.password) {
     callback(new Error('两次输入密码不一致'))
-  } else {
-    callback()
+    return
+  }
+  
+  callback()
+}
+
+// 监听密码变化，重新验证确认密码
+const handlePasswordChange = () => {
+  if (registerForm.confirmPassword !== '') {
+    registerFormRef.value?.validateField('confirmPassword')
   }
 }
+
+// 监听密码变化
+watch(() => registerForm.password, () => {
+  if (registerForm.confirmPassword !== '') {
+    registerFormRef.value?.validateField('confirmPassword')
+  }
+})
 
 // 表单验证规则
 const registerRules: FormRules = {
@@ -161,7 +180,7 @@ const registerRules: FormRules = {
     { min: 6, message: '密码长度至少6位', trigger: 'blur' }
   ],
   confirmPassword: [
-    { validator: validateConfirmPassword, trigger: 'blur' }
+    { validator: validateConfirmPassword, trigger: ['blur', 'change'] }
   ],
   grade: [
     { required: true, message: '请选择年级', trigger: 'change' }
