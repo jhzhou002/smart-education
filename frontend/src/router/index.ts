@@ -24,101 +24,67 @@ const routes: RouteRecordRaw[] = [
     ]
   },
   {
-    path: '/dashboard',
-    name: 'Dashboard',
-    component: () => import('@/views/DashboardView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/assessment',
-    name: 'Assessment',
-    component: () => import('@/views/assessment/AssessmentLayout.vue'),
+    path: '/',
+    component: () => import('@/layouts/MainLayout.vue'),
     meta: { requiresAuth: true },
     children: [
       {
-        path: 'chapters',
+        path: 'dashboard',
+        name: 'Dashboard',
+        component: () => import('@/views/DashboardView.vue')
+      },
+      {
+        path: 'assessment/chapters',
         name: 'AssessmentChapters',
         component: () => import('@/views/assessment/ChaptersView.vue')
       },
       {
-        path: 'test/:id',
+        path: 'assessment/test/:id',
         name: 'AssessmentTest',
         component: () => import('@/views/assessment/TestView.vue')
       },
       {
-        path: 'result/:id',
+        path: 'assessment/result/:id',
         name: 'AssessmentResult',
         component: () => import('@/views/assessment/ResultView.vue')
-      }
-    ]
-  },
-  {
-    path: '/learning',
-    name: 'Learning',
-    component: () => import('@/views/learning/LearningLayout.vue'),
-    meta: { requiresAuth: true },
-    children: [
+      },
       {
-        path: 'overview',
+        path: 'learning/overview',
         name: 'LearningOverview',
         component: () => import('@/views/learning/OverviewView.vue')
       },
       {
-        path: 'tasks/:id',
+        path: 'learning/tasks/:id',
         name: 'LearningTasks',
         component: () => import('@/views/learning/TasksView.vue')
-      }
-    ]
-  },
-  {
-    path: '/practice',
-    name: 'Practice',
-    component: () => import('@/views/practice/PracticeLayout.vue'),
-    meta: { requiresAuth: true },
-    children: [
+      },
       {
-        path: 'questions',
+        path: 'practice/questions',
         name: 'PracticeQuestions',
         component: () => import('@/views/practice/QuestionsView.vue')
       },
       {
-        path: 'mistakes',
+        path: 'practice/mistakes',
         name: 'PracticeMistakes',
         component: () => import('@/views/practice/MistakesView.vue')
-      }
-    ]
-  },
-  {
-    path: '/progress',
-    name: 'Progress',
-    component: () => import('@/views/progress/ProgressLayout.vue'),
-    meta: { requiresAuth: true },
-    children: [
+      },
       {
-        path: 'overview',
+        path: 'progress/overview',
         name: 'ProgressOverview',
         component: () => import('@/views/progress/OverviewView.vue')
       },
       {
-        path: 'analysis',
+        path: 'progress/analysis',
         name: 'ProgressAnalysis',
         component: () => import('@/views/progress/AnalysisView.vue')
-      }
-    ]
-  },
-  {
-    path: '/profile',
-    name: 'Profile',
-    component: () => import('@/views/profile/ProfileLayout.vue'),
-    meta: { requiresAuth: true },
-    children: [
+      },
       {
-        path: 'info',
+        path: 'profile/info',
         name: 'ProfileInfo',
         component: () => import('@/views/profile/InfoView.vue')
       },
       {
-        path: 'settings',
+        path: 'profile/settings',
         name: 'ProfileSettings',
         component: () => import('@/views/profile/SettingsView.vue')
       }

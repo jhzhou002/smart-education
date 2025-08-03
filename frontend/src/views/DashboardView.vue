@@ -1,262 +1,113 @@
 <template>
   <div class="dashboard">
-    <!-- 顶部导航 -->
-    <el-header class="dashboard-header">
-      <div class="header-content">
-        <div class="logo">
-          <h1>智慧教育</h1>
+    <!-- 欢迎区域 -->
+    <div class="welcome-section">
+      <el-card class="welcome-card">
+        <div class="welcome-content">
+          <h2>欢迎回来，{{ authStore.userName }}！</h2>
+          <p class="welcome-subtitle">继续你的数学学习之旅</p>
+          <div class="grade-badge">
+            <el-tag type="primary" size="large">{{ authStore.userGrade }}</el-tag>
+          </div>
         </div>
-        <div class="user-menu">
-          <el-dropdown>
-            <span class="user-info">
-              <el-avatar :src="authStore.user?.avatar_url" :size="32">
-                {{ authStore.userName?.charAt(0) }}
-              </el-avatar>
-              <span class="username">{{ authStore.userName }}</span>
-              <el-icon><ArrowDown /></el-icon>
-            </span>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item @click="$router.push('/profile/info')">
-                  <el-icon><User /></el-icon>
-                  个人信息
-                </el-dropdown-item>
-                <el-dropdown-item @click="$router.push('/profile/settings')">
-                  <el-icon><Setting /></el-icon>
-                  设置
-                </el-dropdown-item>
-                <el-dropdown-item divided @click="handleLogout">
-                  <el-icon><SwitchButton /></el-icon>
-                  退出登录
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </div>
-      </div>
-    </el-header>
+      </el-card>
+    </div>
 
-    <!-- 主要内容区域 -->
-    <el-container class="dashboard-container">
-      <!-- 侧边导航 -->
-      <el-aside class="dashboard-aside" width="240px">
-        <el-menu
-          :default-active="activeMenu"
-          class="dashboard-menu"
-          @select="handleMenuSelect"
-        >
-          <el-menu-item index="/dashboard">
-            <el-icon><House /></el-icon>
-            <span>首页</span>
-          </el-menu-item>
-          
-          <el-menu-item index="/assessment/chapters">
-            <el-icon><Document /></el-icon>
-            <span>基础测试</span>
-          </el-menu-item>
-          
-          <el-menu-item index="/learning/overview">
-            <el-icon><Calendar /></el-icon>
-            <span>学习计划</span>
-          </el-menu-item>
-          
-          <el-menu-item index="/practice/questions">
-            <el-icon><EditPen /></el-icon>
-            <span>练习中心</span>
-          </el-menu-item>
-          
-          <el-menu-item index="/progress/overview">
-            <el-icon><DataLine /></el-icon>
-            <span>学习进度</span>
-          </el-menu-item>
-        </el-menu>
-      </el-aside>
-
-      <!-- 主内容区 -->
-      <el-main class="dashboard-main">
-        <div class="welcome-section">
-          <el-card class="welcome-card">
-            <div class="welcome-content">
-              <h2>欢迎回来，{{ authStore.userName }}！</h2>
-              <p class="welcome-subtitle">继续你的数学学习之旅</p>
-              <div class="grade-badge">
-                <el-tag type="primary" size="large">{{ authStore.userGrade }}</el-tag>
-              </div>
+    <!-- 快速操作 -->
+    <div class="quick-actions">
+      <h3>快速开始</h3>
+      <el-row :gutter="20">
+        <el-col :span="8">
+          <el-card class="action-card" @click="$router.push('/assessment/chapters')">
+            <div class="action-content">
+              <el-icon class="action-icon" color="#409eff"><Document /></el-icon>
+              <h4>基础测试</h4>
+              <p>检测你的数学基础水平</p>
             </div>
           </el-card>
-        </div>
+        </el-col>
+        
+        <el-col :span="8">
+          <el-card class="action-card" @click="$router.push('/learning/overview')">
+            <div class="action-content">
+              <el-icon class="action-icon" color="#67c23a"><Reading /></el-icon>
+              <h4>学习计划</h4>
+              <p>查看个性化学习安排</p>
+            </div>
+          </el-card>
+        </el-col>
+        
+        <el-col :span="8">
+          <el-card class="action-card" @click="$router.push('/practice/questions')">
+            <div class="action-content">
+              <el-icon class="action-icon" color="#e6a23c"><EditPen /></el-icon>
+              <h4>开始练习</h4>
+              <p>针对性题目练习</p>
+            </div>
+          </el-card>
+        </el-col>
+      </el-row>
+    </div>
 
-        <!-- 快速操作 -->
-        <div class="quick-actions">
-          <h3>快速开始</h3>
-          <el-row :gutter="20">
-            <el-col :span="8">
-              <el-card class="action-card" @click="$router.push('/assessment/chapters')">
-                <div class="action-content">
-                  <el-icon class="action-icon" color="#409eff"><Document /></el-icon>
-                  <h4>基础测试</h4>
-                  <p>检测你的数学基础水平</p>
-                </div>
-              </el-card>
-            </el-col>
-            
-            <el-col :span="8">
-              <el-card class="action-card" @click="$router.push('/learning/overview')">
-                <div class="action-content">
-                  <el-icon class="action-icon" color="#67c23a"><Calendar /></el-icon>
-                  <h4>学习计划</h4>
-                  <p>查看个性化学习安排</p>
-                </div>
-              </el-card>
-            </el-col>
-            
-            <el-col :span="8">
-              <el-card class="action-card" @click="$router.push('/practice/questions')">
-                <div class="action-content">
-                  <el-icon class="action-icon" color="#e6a23c"><EditPen /></el-icon>
-                  <h4>开始练习</h4>
-                  <p>针对性题目练习</p>
-                </div>
-              </el-card>
-            </el-col>
-          </el-row>
-        </div>
+    <!-- 学习概览 -->
+    <div class="overview-section">
+      <h3>学习概览</h3>
+      <el-row :gutter="20">
+        <el-col :span="8">
+          <el-card>
+            <div class="stat-item">
+              <div class="stat-number">0</div>
+              <div class="stat-label">已完成测试</div>
+            </div>
+          </el-card>
+        </el-col>
+        
+        <el-col :span="8">
+          <el-card>
+            <div class="stat-item">
+              <div class="stat-number">0</div>
+              <div class="stat-label">练习题目数</div>
+            </div>
+          </el-card>
+        </el-col>
+        
+        <el-col :span="8">
+          <el-card>
+            <div class="stat-item">
+              <div class="stat-number">0</div>
+              <div class="stat-label">学习时长(小时)</div>
+            </div>
+          </el-card>
+        </el-col>
+      </el-row>
+    </div>
 
-        <!-- 学习概览 -->
-        <div class="overview-section">
-          <h3>学习概览</h3>
-          <el-row :gutter="20">
-            <el-col :span="12">
-              <el-card>
-                <div class="stat-item">
-                  <div class="stat-number">0</div>
-                  <div class="stat-label">已完成测试</div>
-                </div>
-              </el-card>
-            </el-col>
-            
-            <el-col :span="12">
-              <el-card>
-                <div class="stat-item">
-                  <div class="stat-number">0</div>
-                  <div class="stat-label">练习题目数</div>
-                </div>
-              </el-card>
-            </el-col>
-          </el-row>
-        </div>
-      </el-main>
-    </el-container>
+    <!-- 最近活动 -->
+    <div class="recent-activity">
+      <h3>最近活动</h3>
+      <el-card>
+        <el-empty description="暂无学习记录" />
+      </el-card>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import {
-  House,
   Document,
-  Calendar,
-  EditPen,
-  DataLine,
-  User,
-  Setting,
-  SwitchButton,
-  ArrowDown
+  Reading,
+  EditPen
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
-const route = useRoute()
 const authStore = useAuthStore()
-
-// 当前激活的菜单项
-const activeMenu = computed(() => route.path)
-
-// 处理菜单选择
-const handleMenuSelect = (index: string) => {
-  router.push(index)
-}
-
-// 处理退出登录
-const handleLogout = async () => {
-  try {
-    await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    authStore.logout()
-  } catch {
-    // 用户取消
-  }
-}
 </script>
 
 <style scoped>
 .dashboard {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.dashboard-header {
-  background: #fff;
-  border-bottom: 1px solid #e4e7ed;
-  padding: 0;
-  height: 60px;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 100%;
-  padding: 0 20px;
-}
-
-.logo h1 {
-  margin: 0;
-  color: #409eff;
-  font-size: 1.5rem;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 6px;
-  transition: background-color 0.3s;
-}
-
-.user-info:hover {
-  background-color: #f5f7fa;
-}
-
-.username {
-  font-weight: 500;
-}
-
-.dashboard-container {
-  flex: 1;
-}
-
-.dashboard-aside {
-  background: #fff;
-  border-right: 1px solid #e4e7ed;
-}
-
-.dashboard-menu {
-  border: none;
-  height: 100%;
-}
-
-.dashboard-main {
-  background: #f5f7fa;
-  padding: 20px;
+  /* 由MainLayout提供布局，这里不需要固定高度 */
 }
 
 .welcome-section {
@@ -290,19 +141,24 @@ const handleLogout = async () => {
 }
 
 .quick-actions,
-.overview-section {
+.overview-section,
+.recent-activity {
   margin-bottom: 24px;
 }
 
 .quick-actions h3,
-.overview-section h3 {
+.overview-section h3,
+.recent-activity h3 {
   margin: 0 0 16px 0;
   color: #303133;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .action-card {
   cursor: pointer;
   transition: transform 0.3s, box-shadow 0.3s;
+  height: 100%;
 }
 
 .action-card:hover {
@@ -312,32 +168,34 @@ const handleLogout = async () => {
 
 .action-content {
   text-align: center;
-  padding: 20px;
+  padding: 24px;
 }
 
 .action-icon {
-  font-size: 2rem;
-  margin-bottom: 12px;
+  font-size: 2.5rem;
+  margin-bottom: 16px;
 }
 
 .action-content h4 {
   margin: 0 0 8px 0;
   color: #303133;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .action-content p {
   margin: 0;
   color: #909399;
-  font-size: 0.875rem;
+  font-size: 14px;
 }
 
 .stat-item {
   text-align: center;
-  padding: 20px;
+  padding: 24px;
 }
 
 .stat-number {
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: bold;
   color: #409eff;
   margin-bottom: 8px;
@@ -345,14 +203,22 @@ const handleLogout = async () => {
 
 .stat-label {
   color: #909399;
-  font-size: 0.875rem;
+  font-size: 14px;
 }
 
 :deep(.el-card__body) {
-  padding: 0;
+  padding: 20px;
 }
 
 :deep(.welcome-card .el-card__body) {
+  padding: 0;
+}
+
+:deep(.action-card .el-card__body) {
+  padding: 0;
+}
+
+:deep(.stat-item) {
   padding: 0;
 }
 </style>
