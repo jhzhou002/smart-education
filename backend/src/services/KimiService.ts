@@ -29,10 +29,46 @@ export class KimiService {
     baseURL: KIMI_BASE_URL,
     headers: {
       'Authorization': `Bearer ${KIMI_API_KEY}`,
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'User-Agent': 'smart-education/1.0.0'
     },
-    timeout: 30000
+    timeout: 30000,
+    // 禁用代理
+    proxy: false,
+    // 添加请求拦截器
+    validateStatus: (status) => status < 500
   })
+
+  // 静态初始化块，添加请求和响应拦截器
+  static {
+    this.apiClient.interceptors.request.use(
+      (config) => {
+        console.log(`🌐 发送请求到: ${config.baseURL}${config.url}`)
+        console.log(`📝 请求头: ${JSON.stringify(config.headers)}`)
+        return config
+      },
+      (error) => {
+        console.error('❌ 请求拦截器错误:', error)
+        return Promise.reject(error)
+      }
+    )
+
+    this.apiClient.interceptors.response.use(
+      (response) => {
+        console.log(`✅ 收到响应 ${response.status}: ${response.statusText}`)
+        return response
+      },
+      (error) => {
+        console.error('❌ 响应拦截器错误:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          message: error.message
+        })
+        return Promise.reject(error)
+      }
+    )
+  }
 
   /**
    * 生成基础测评题目
