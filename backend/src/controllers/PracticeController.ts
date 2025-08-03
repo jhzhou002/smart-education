@@ -134,16 +134,33 @@ export class PracticeController {
       })
 
       // 解析选项JSON并隐藏答案
-      const questionsForClient = questions.map(q => ({
-        id: q.id,
-        question_text: q.question_text,
-        question_type: q.question_type,
-        difficulty: q.difficulty,
-        options: q.options ? JSON.parse(q.options) : null,
-        usage_count: q.usage_count,
-        correct_rate: q.correct_rate,
-        topic: q.topic
-      }))
+      const questionsForClient = questions.map(q => {
+        let options = null
+        if (q.options && q.question_type === '单选') {
+          try {
+            const parsedOptions = JSON.parse(q.options)
+            // 转换为前端期望的格式：{key, text}
+            options = parsedOptions.map((option: string) => ({
+              key: option.charAt(0), // 取第一个字符作为key，如 "A. 选项1" -> "A"
+              text: option           // 完整文本
+            }))
+          } catch (error) {
+            console.error('选项解析失败:', error)
+            options = null
+          }
+        }
+        
+        return {
+          id: q.id,
+          question_text: q.question_text,
+          question_type: q.question_type,
+          difficulty: q.difficulty,
+          options: options,
+          usage_count: q.usage_count,
+          correct_rate: q.correct_rate,
+          topic: q.topic
+        }
+      })
 
       res.json({
         message: '获取练习题目成功',
@@ -167,12 +184,19 @@ export class PracticeController {
    */
   static async submitPracticeAnswer(req: Request, res: Response) {
     try {
+      console.log('🎯 收到提交答案请求')
+      console.log('请求体:', req.body)
+      
       const userId = req.user?.userId
       if (!userId) {
         return res.status(401).json({ message: '用户未认证' })
       }
 
       const { question_id, user_answer, time_spent = 0 } = req.body
+      
+      if (!question_id || !user_answer) {
+        return res.status(400).json({ message: '题目ID和答案不能为空' })
+      }
 
       // 获取题目信息
       const question = await PracticeQuestion.findByPk(question_id)
@@ -213,7 +237,9 @@ export class PracticeController {
       }
 
       // 更新题目统计
+      console.log('📊 更新题目统计...')
       await this.updateQuestionStats(question_id)
+      console.log('✅ 题目统计更新成功')
 
       res.json({
         message: '答案提交成功',
@@ -227,8 +253,12 @@ export class PracticeController {
       })
 
     } catch (error: any) {
-      console.error('提交练习答案失败:', error)
-      res.status(500).json({ message: '提交练习答案失败' })
+      console.error('❌ 提交练习答案失败:', error)
+      console.error('错误详情:', error.stack)
+      res.status(500).json({ 
+        message: '提交练习答案失败',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      })
     }
   }
 
