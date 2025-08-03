@@ -11,6 +11,7 @@ export class PracticeController {
    * 获取练习题目
    */
   static async getPracticeQuestions(req: Request, res: Response) {
+    console.log('🚀 PRACTICE CONTROLLER CALLED!!!')
     console.log('🎯 收到练习题目请求')
     console.log('请求参数:', req.query)
     console.log('用户信息:', req.user)
