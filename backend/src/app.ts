@@ -40,12 +40,14 @@ import chaptersRoutes from './routes/chapters'
 import assessmentRoutes from './routes/assessments'
 import practiceRoutes from './routes/practice'
 import learningRoutes from './routes/learning'
+import debugRoutes from './routes/debug'
 
 app.use('/api/auth', authRoutes)
 app.use('/api/chapters', chaptersRoutes)
 app.use('/api/assessments', assessmentRoutes)
 app.use('/api/practice', practiceRoutes)
 app.use('/api/learning', learningRoutes)
+app.use('/api/debug', debugRoutes)
 
 // 404 处理
 app.use('*', (req, res) => {

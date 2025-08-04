@@ -290,6 +290,300 @@ export class KimiService {
   }
 
   /**
+   * 调试版本：生成练习题目（不使用fallback）
+   */
+  static async generatePracticeQuestionsDebug(
+    topicName: string,
+    difficulty: string,
+    questionCount: number
+  ): Promise<GeneratedQuestion[]> {
+    console.log('🔧 [KIMI DEBUG] 开始生成练习题目')
+    console.log('🔧 [KIMI DEBUG] 参数:', { topicName, difficulty, questionCount })
+
+    const prompt = `你是一位专业的高中数学老师，请生成${questionCount}道关于"${topicName}"的${difficulty}难度练习题目。
+
+要求：
+1. 题目类型多样化（单选题、填空题、解答题）
+2. 题目内容要符合高中数学水平
+3. 每道题目必须包含详细的解题步骤
+4. 严格按照以下JSON格式返回，不要包含任何其他文字说明：
+
+[
+  {
+    "question_text": "题目内容",
+    "question_type": "单选|填空|解答",
+    "difficulty": "${difficulty}",
+    "options": ["A. 选项1", "B. 选项2", "C. 选项3", "D. 选项4"],
+    "correct_answer": "正确答案",
+    "solution": "详细解题步骤",
+    "knowledge_points": ["${topicName}"]
+  }
+]
+
+注意：
+- 单选题必须包含options数组，其他题型options为null
+- correct_answer对于单选题应该是选项字母（如"A"），其他题型是具体答案
+- solution必须详细，包含每个解题步骤`
+
+    try {
+      console.log('🔧 [KIMI DEBUG] 发送API请求...')
+      console.log('🔧 [KIMI DEBUG] 请求URL:', `${KIMI_BASE_URL}/chat/completions`)
+      console.log('🔧 [KIMI DEBUG] 模型:', 'moonshot-v1-8k')
+      console.log('🔧 [KIMI DEBUG] 提示词长度:', prompt.length)
+
+      const requestData = {
+        model: 'moonshot-v1-8k',
+        messages: [
+          {
+            role: 'system',  
+            content: '你是一个专业的高中数学老师，擅长出题。请严格按照JSON格式返回，不要包含任何markdown标记或其他文字。'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 2000
+      }
+
+      console.log('🔧 [KIMI DEBUG] 请求数据:', JSON.stringify(requestData, null, 2))
+
+      const response = await this.apiClient.post<KimiResponse>('/chat/completions', requestData)
+      
+      console.log('🔧 [KIMI DEBUG] 收到响应状态:', response.status)
+      console.log('🔧 [KIMI DEBUG] 响应头:', response.headers)
+      console.log('🔧 [KIMI DEBUG] 响应数据:', JSON.stringify(response.data, null, 2))
+
+      if (!response.data.choices || !response.data.choices[0] || !response.data.choices[0].message) {
+        throw new Error('API响应格式异常: 缺少choices或message字段')
+      }
+
+      const content = response.data.choices[0].message.content
+      console.log('🔧 [KIMI DEBUG] AI回复内容:', content)
+      console.log('🔧 [KIMI DEBUG] 内容长度:', content.length)
+
+      if (!content || content.trim() === '') {
+        throw new Error('AI返回内容为空')
+      }
+
+      // 尝试解析JSON
+      let questions: GeneratedQuestion[]
+      try {
+        // 清理可能的markdown标记
+        const cleanContent = content
+          .replace(/```json\s*/g, '')
+          .replace(/```\s*/g, '')
+          .trim()
+        
+        console.log('🔧 [KIMI DEBUG] 清理后的内容:', cleanContent)
+        
+        questions = JSON.parse(cleanContent) as GeneratedQuestion[]
+        console.log('🔧 [KIMI DEBUG] JSON解析成功，题目数量:', questions.length)
+      } catch (parseError) {
+        console.error('🔧 [KIMI DEBUG] JSON解析失败:', parseError)
+        console.error('🔧 [KIMI DEBUG] 原始内容:', content)
+        throw new Error(`JSON解析失败: ${parseError}`)
+      }
+
+      if (!Array.isArray(questions)) {
+        throw new Error('AI返回的不是数组格式')
+      }
+
+      console.log('🔧 [KIMI DEBUG] 验证题目格式...')
+      questions.forEach((q, index) => {
+        console.log(`🔧 [KIMI DEBUG] 题目${index + 1}:`, {
+          question_text: q.question_text?.substring(0, 50) + '...',
+          question_type: q.question_type,
+          difficulty: q.difficulty,
+          has_options: !!q.options,
+          correct_answer: q.correct_answer,
+          has_solution: !!q.solution,
+          knowledge_points: q.knowledge_points
+        })
+        
+        if (!q.question_text || !q.question_type || !q.correct_answer) {
+          console.error('🔧 [KIMI DEBUG] 题目格式不完整:', q)
+          throw new Error(`第${index + 1}道题目格式不完整`)
+        }
+      })
+
+      console.log(`🔧 [KIMI DEBUG] ✅ 成功生成${questions.length}道练习题目`)
+      return questions
+
+    } catch (error: any) {
+      console.error('🔧 [KIMI DEBUG] ❌ 生成练习题目失败:', error)
+      
+      if (error.response) {
+        console.error('🔧 [KIMI DEBUG] HTTP错误状态:', error.response.status)
+        console.error('🔧 [KIMI DEBUG] HTTP错误头:', error.response.headers)
+        console.error('🔧 [KIMI DEBUG] HTTP错误数据:', error.response.data)
+      }
+      
+      if (error.request) {
+        console.error('🔧 [KIMI DEBUG] 请求配置:', {
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers,
+          timeout: error.config?.timeout
+        })
+      }
+
+      // 直接抛出错误，不使用fallback
+      throw error
+    }
+  }
+
+  /**
+   * 调试版本：生成测评题目（不使用fallback）
+   */
+  static async generateAssessmentQuestionsDebug(
+    chapterName: string,
+    topicNames: string[],
+    questionCount: number
+  ): Promise<GeneratedQuestion[]> {
+    console.log('🔧 [KIMI DEBUG] 开始生成测评题目')
+    console.log('🔧 [KIMI DEBUG] 参数:', { chapterName, topicNames, questionCount })
+
+    const topicsText = topicNames.join('、')
+    const prompt = `你是一位专业的高中数学老师，请为"${chapterName}"章节生成${questionCount}道综合测评题目。
+
+涉及知识点：${topicsText}
+
+要求：
+1. 题目要覆盖不同知识点，难度分布合理
+2. 题目类型多样化（单选题、填空题、解答题）
+3. 每道题目必须包含详细的解题步骤
+4. 严格按照以下JSON格式返回，不要包含任何其他文字说明：
+
+[
+  {
+    "question_text": "题目内容",
+    "question_type": "单选|填空|解答", 
+    "difficulty": "基础|中等|困难",
+    "options": ["A. 选项1", "B. 选项2", "C. 选项3", "D. 选项4"],
+    "correct_answer": "正确答案",
+    "solution": "详细解题步骤",
+    "knowledge_points": ["相关知识点"]
+  }
+]
+
+注意：
+- 单选题必须包含options数组，其他题型options为null
+- correct_answer对于单选题应该是选项字母（如"A"），其他题型是具体答案
+- solution必须详细，包含每个解题步骤
+- knowledge_points应该从给定的知识点中选择`
+
+    try {
+      console.log('🔧 [KIMI DEBUG] 发送API请求...')
+      console.log('🔧 [KIMI DEBUG] 请求URL:', `${KIMI_BASE_URL}/chat/completions`)
+      console.log('🔧 [KIMI DEBUG] 模型:', 'moonshot-v1-8k')
+      console.log('🔧 [KIMI DEBUG] 提示词长度:', prompt.length)
+
+      const requestData = {
+        model: 'moonshot-v1-8k',
+        messages: [
+          {
+            role: 'system',
+            content: '你是一个专业的高中数学老师，擅长出题。请严格按照JSON格式返回，不要包含任何markdown标记或其他文字。'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 3000
+      }
+
+      console.log('🔧 [KIMI DEBUG] 请求数据:', JSON.stringify(requestData, null, 2))
+
+      const response = await this.apiClient.post<KimiResponse>('/chat/completions', requestData)
+      
+      console.log('🔧 [KIMI DEBUG] 收到响应状态:', response.status)
+      console.log('🔧 [KIMI DEBUG] 响应头:', response.headers)
+      console.log('🔧 [KIMI DEBUG] 响应数据:', JSON.stringify(response.data, null, 2))
+
+      if (!response.data.choices || !response.data.choices[0] || !response.data.choices[0].message) {
+        throw new Error('API响应格式异常: 缺少choices或message字段')
+      }
+
+      const content = response.data.choices[0].message.content
+      console.log('🔧 [KIMI DEBUG] AI回复内容:', content)
+      console.log('🔧 [KIMI DEBUG] 内容长度:', content.length)
+
+      if (!content || content.trim() === '') {
+        throw new Error('AI返回内容为空')
+      }
+
+      // 尝试解析JSON
+      let questions: GeneratedQuestion[]
+      try {
+        // 清理可能的markdown标记
+        const cleanContent = content
+          .replace(/```json\s*/g, '')
+          .replace(/```\s*/g, '')
+          .trim()
+        
+        console.log('🔧 [KIMI DEBUG] 清理后的内容:', cleanContent)
+        
+        questions = JSON.parse(cleanContent) as GeneratedQuestion[]
+        console.log('🔧 [KIMI DEBUG] JSON解析成功，题目数量:', questions.length)
+      } catch (parseError) {
+        console.error('🔧 [KIMI DEBUG] JSON解析失败:', parseError)
+        console.error('🔧 [KIMI DEBUG] 原始内容:', content)
+        throw new Error(`JSON解析失败: ${parseError}`)
+      }
+
+      if (!Array.isArray(questions)) {
+        throw new Error('AI返回的不是数组格式')
+      }
+
+      console.log('🔧 [KIMI DEBUG] 验证题目格式...')
+      questions.forEach((q, index) => {
+        console.log(`🔧 [KIMI DEBUG] 题目${index + 1}:`, {
+          question_text: q.question_text?.substring(0, 50) + '...',
+          question_type: q.question_type,
+          difficulty: q.difficulty,
+          has_options: !!q.options,
+          correct_answer: q.correct_answer,
+          has_solution: !!q.solution,
+          knowledge_points: q.knowledge_points
+        })
+        
+        if (!q.question_text || !q.question_type || !q.correct_answer) {
+          console.error('🔧 [KIMI DEBUG] 题目格式不完整:', q)
+          throw new Error(`第${index + 1}道题目格式不完整`)
+        }
+      })
+
+      console.log(`🔧 [KIMI DEBUG] ✅ 成功生成${questions.length}道测评题目`)
+      return questions
+
+    } catch (error: any) {
+      console.error('🔧 [KIMI DEBUG] ❌ 生成测评题目失败:', error)
+      
+      if (error.response) {
+        console.error('🔧 [KIMI DEBUG] HTTP错误状态:', error.response.status)
+        console.error('🔧 [KIMI DEBUG] HTTP错误头:', error.response.headers)
+        console.error('🔧 [KIMI DEBUG] HTTP错误数据:', error.response.data)
+      }
+      
+      if (error.request) {
+        console.error('🔧 [KIMI DEBUG] 请求配置:', {
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers,
+          timeout: error.config?.timeout
+        })
+      }
+
+      // 直接抛出错误，不使用fallback
+      throw error
+    }
+  }
+
+  /**
    * 生成个性化学习计划
    */
   static async generateLearningPlan(
