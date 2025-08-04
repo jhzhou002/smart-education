@@ -13,6 +13,12 @@ router.post('/generate-practice', DebugController.generatePracticeQuestions)
 // 生成测评题目（调试版本）
 router.post('/generate-assessment', DebugController.generateAssessmentQuestions)
 
+// 监督式练习题目生成（Kimi + DeepSeek）
+router.post('/generate-supervised-practice', DebugController.generateSupervisedPracticeQuestions)
+
+// 监督式测评题目生成（Kimi + DeepSeek）
+router.post('/generate-supervised-assessment', DebugController.generateSupervisedAssessmentQuestions)
+
 // 获取API配置信息
 router.get('/api-info', DebugController.getApiInfo)
 

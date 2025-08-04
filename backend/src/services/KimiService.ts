@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { config } from 'dotenv'
+import { DeepSeekService } from './DeepSeekService'
 
 config()
 
@@ -111,7 +112,7 @@ export class KimiService {
     try {
       console.log('发送Kimi API请求 - 生成测评题目')
       const response = await this.apiClient.post<KimiResponse>('/chat/completions', {
-        model: 'moonshot-v1-8k',
+        model: 'kimi-thinking-preview',
         messages: [
           {
             role: 'system',
@@ -183,7 +184,7 @@ export class KimiService {
     try {
       console.log(`发送Kimi API请求 - 生成${topicName}练习题目`)
       const response = await this.apiClient.post<KimiResponse>('/chat/completions', {
-        model: 'moonshot-v1-8k',
+        model: 'kimi-thinking-preview',
         messages: [
           {
             role: 'system',
@@ -332,7 +333,7 @@ export class KimiService {
       console.log('🔧 [KIMI DEBUG] 提示词长度:', prompt.length)
 
       const requestData = {
-        model: 'moonshot-v1-8k',
+        model: 'kimi-thinking-preview',
         messages: [
           {
             role: 'system',  
@@ -481,7 +482,7 @@ export class KimiService {
       console.log('🔧 [KIMI DEBUG] 提示词长度:', prompt.length)
 
       const requestData = {
-        model: 'moonshot-v1-8k',
+        model: 'kimi-thinking-preview',
         messages: [
           {
             role: 'system',
@@ -611,7 +612,7 @@ ${targetScore ? `- 目标分数：${targetScore}分` : ''}
     try {
       console.log(`发送Kimi API请求 - 生成学习计划`)
       const response = await this.apiClient.post<KimiResponse>('/chat/completions', {
-        model: 'moonshot-v1-8k',
+        model: 'kimi-thinking-preview',
         messages: [
           {
             role: 'system',
@@ -677,7 +678,7 @@ ${assessmentSummary}
     try {
       console.log(`发送Kimi API请求 - 分析学习进度`)
       const response = await this.apiClient.post<KimiResponse>('/chat/completions', {
-        model: 'moonshot-v1-8k',
+        model: 'kimi-thinking-preview',
         messages: [
           {
             role: 'system',
@@ -703,6 +704,273 @@ ${assessmentSummary}
     } catch (error: any) {
       console.error('学习进度分析失败:', error.response?.data || error.message)
       throw new Error(`学习进度分析失败: ${error.message}`)
+    }
+  }
+
+  /**
+   * 带监督的练习题目生成（Kimi生成 + DeepSeek审核）
+   */
+  static async generateSupervisedPracticeQuestions(
+    topicName: string,
+    difficulty: string,
+    questionCount: number,
+    maxRetries: number = 3
+  ): Promise<{
+    questions: GeneratedQuestion[]
+    auditResults: any[]
+    generationAttempts: number
+    supervisionSummary: {
+      totalGenerated: number
+      totalAudited: number
+      validQuestions: number
+      averageScore: number
+    }
+  }> {
+    console.log('🔄 [SUPERVISED] 开始监督式题目生成')
+    console.log('🔄 [SUPERVISED] 参数:', {
+      topicName,
+      difficulty,
+      questionCount,
+      maxRetries
+    })
+
+    let generationAttempts = 0
+    let finalQuestions: GeneratedQuestion[] = []
+    let allAuditResults: any[] = []
+    let totalGenerated = 0
+    let totalAudited = 0
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      generationAttempts = attempt
+      console.log(`🔄 [SUPERVISED] 第 ${attempt} 次生成尝试`)
+
+      try {
+        // 1. 使用Kimi生成题目
+        console.log('🤖 [KIMI] 生成题目中...')
+        const generatedQuestions = await this.generatePracticeQuestionsDebug(
+          topicName,
+          difficulty,
+          questionCount
+        )
+        
+        totalGenerated += generatedQuestions.length
+        console.log(`🤖 [KIMI] 生成了 ${generatedQuestions.length} 道题目`)
+
+        // 2. 使用DeepSeek逐个审核
+        console.log('🔍 [DEEPSEEK] 开始逐个审核题目...')
+        const auditResults = []
+        const validatedQuestions = []
+
+        for (let i = 0; i < generatedQuestions.length; i++) {
+          const question = generatedQuestions[i]
+          console.log(`🔍 [DEEPSEEK] 审核第 ${i + 1}/${generatedQuestions.length} 道题目...`)
+
+          try {
+            const auditResult = await DeepSeekService.auditMathQuestion(question)
+            auditResults.push({
+              questionIndex: i,
+              question: question,
+              audit: auditResult
+            })
+            totalAudited++
+
+            // 只保留审核通过的题目（得分>=80且isValid=true）
+            if (auditResult.isValid && auditResult.score >= 80) {
+              validatedQuestions.push(question)
+              console.log(`✅ [DEEPSEEK] 第 ${i + 1} 道题目通过审核 (得分: ${auditResult.score})`)
+            } else {
+              console.log(`❌ [DEEPSEEK] 第 ${i + 1} 道题目未通过审核 (得分: ${auditResult.score})`)
+              console.log(`🔍 [DEEPSEEK] 问题: ${auditResult.issues.join(', ')}`)
+            }
+
+            // 避免请求过于频繁
+            if (i < generatedQuestions.length - 1) {
+              await new Promise(resolve => setTimeout(resolve, 2000))
+            }
+
+          } catch (auditError) {
+            console.error(`🔍 [DEEPSEEK] 第 ${i + 1} 道题目审核失败:`, auditError)
+            auditResults.push({
+              questionIndex: i,
+              question: question,
+              audit: {
+                isValid: false,
+                score: 0,
+                issues: [`审核失败: ${auditError}`],
+                suggestions: ['请重新生成'],
+                auditSummary: '审核过程出现错误'
+              }
+            })
+          }
+        }
+
+        allAuditResults.push(...auditResults)
+
+        console.log(`🔄 [SUPERVISED] 第 ${attempt} 次尝试结果:`)
+        console.log(`  - 生成题目数: ${generatedQuestions.length}`)
+        console.log(`  - 审核题目数: ${auditResults.length}`)
+        console.log(`  - 通过审核数: ${validatedQuestions.length}`)
+
+        // 如果通过审核的题目数量足够，就结束生成
+        if (validatedQuestions.length >= questionCount || validatedQuestions.length >= generatedQuestions.length * 0.6) {
+          finalQuestions = validatedQuestions.slice(0, questionCount)
+          console.log(`🎉 [SUPERVISED] 成功获得 ${finalQuestions.length} 道高质量题目`)
+          break
+        }
+
+        // 如果是最后一次尝试，就使用现有的题目
+        if (attempt === maxRetries) {
+          finalQuestions = validatedQuestions.slice(0, questionCount)
+          console.log(`⚠️  [SUPERVISED] 达到最大尝试次数，使用现有 ${finalQuestions.length} 道题目`)
+          break
+        }
+
+        console.log(`🔄 [SUPERVISED] 通过审核的题目不足，准备第 ${attempt + 1} 次尝试...`)
+        await new Promise(resolve => setTimeout(resolve, 3000))
+
+      } catch (error) {
+        console.error(`🔄 [SUPERVISED] 第 ${attempt} 次生成失败:`, error)
+        
+        if (attempt === maxRetries) {
+          throw new Error(`监督式生成失败: ${error}`)
+        }
+      }
+    }
+
+    // 计算监督统计信息
+    const validAuditResults = allAuditResults.filter(r => r.audit && typeof r.audit.score === 'number')
+    const averageScore = validAuditResults.length > 0 
+      ? validAuditResults.reduce((sum, r) => sum + r.audit.score, 0) / validAuditResults.length 
+      : 0
+
+    const supervisionSummary = {
+      totalGenerated,
+      totalAudited,
+      validQuestions: finalQuestions.length,
+      averageScore: Math.round(averageScore * 10) / 10
+    }
+
+    console.log('🎯 [SUPERVISED] 监督式生成完成:')
+    console.log('  - 总生成题目数:', supervisionSummary.totalGenerated)
+    console.log('  - 总审核题目数:', supervisionSummary.totalAudited)
+    console.log('  - 有效题目数:', supervisionSummary.validQuestions)
+    console.log('  - 平均得分:', supervisionSummary.averageScore)
+    console.log('  - 生成尝试次数:', generationAttempts)
+
+    return {
+      questions: finalQuestions,
+      auditResults: allAuditResults,
+      generationAttempts,
+      supervisionSummary
+    }
+  }
+
+  /**
+   * 带监督的测评题目生成（Kimi生成 + DeepSeek审核）
+   */
+  static async generateSupervisedAssessmentQuestions(
+    chapterName: string,
+    topicNames: string[],
+    grade: string,
+    questionCount: number,
+    maxRetries: number = 2
+  ): Promise<{
+    questions: GeneratedQuestion[]
+    auditResults: any[]
+    generationAttempts: number
+    supervisionSummary: {
+      totalGenerated: number
+      totalAudited: number
+      validQuestions: number
+      averageScore: number
+    }
+  }> {
+    console.log('🔄 [SUPERVISED-ASSESSMENT] 开始监督式测评题目生成')
+
+    let generationAttempts = 0
+    let finalQuestions: GeneratedQuestion[] = []
+    let allAuditResults: any[] = []
+    let totalGenerated = 0
+    let totalAudited = 0
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      generationAttempts = attempt
+      console.log(`🔄 [SUPERVISED-ASSESSMENT] 第 ${attempt} 次生成尝试`)
+
+      try {
+        // 1. 使用Kimi生成测评题目
+        const generatedQuestions = await this.generateAssessmentQuestionsDebug(
+          chapterName,
+          topicNames,
+          questionCount
+        )
+        
+        totalGenerated += generatedQuestions.length
+
+        // 2. 使用DeepSeek批量审核（测评题目更复杂，可以使用批量审核）
+        console.log('🔍 [DEEPSEEK] 开始批量审核测评题目...')
+        const batchAuditResults = await DeepSeekService.batchAuditQuestions(generatedQuestions)
+        
+        totalAudited += generatedQuestions.length
+
+        const auditResults = generatedQuestions.map((question, index) => ({
+          questionIndex: index,
+          question,
+          audit: batchAuditResults[index]
+        }))
+
+        allAuditResults.push(...auditResults)
+
+        // 筛选通过审核的题目
+        const validatedQuestions = auditResults
+          .filter(result => result.audit.isValid && result.audit.score >= 75) // 测评题目标准稍低
+          .map(result => result.question)
+
+        console.log(`🔄 [SUPERVISED-ASSESSMENT] 第 ${attempt} 次尝试结果:`)
+        console.log(`  - 生成题目数: ${generatedQuestions.length}`)
+        console.log(`  - 通过审核数: ${validatedQuestions.length}`)
+
+        if (validatedQuestions.length >= questionCount * 0.7) { // 70%通过率就可以接受
+          finalQuestions = validatedQuestions.slice(0, questionCount)
+          console.log(`🎉 [SUPERVISED-ASSESSMENT] 成功获得 ${finalQuestions.length} 道测评题目`)
+          break
+        }
+
+        if (attempt === maxRetries) {
+          finalQuestions = validatedQuestions.slice(0, questionCount)
+          console.log(`⚠️  [SUPERVISED-ASSESSMENT] 使用现有 ${finalQuestions.length} 道测评题目`)
+          break
+        }
+
+      } catch (error) {
+        console.error(`🔄 [SUPERVISED-ASSESSMENT] 第 ${attempt} 次生成失败:`, error)
+        
+        if (attempt === maxRetries) {
+          throw new Error(`监督式测评生成失败: ${error}`)
+        }
+      }
+    }
+
+    // 计算统计信息  
+    const validAuditResults = allAuditResults.filter(r => r.audit && typeof r.audit.score === 'number')
+    const averageScore = validAuditResults.length > 0 
+      ? validAuditResults.reduce((sum, r) => sum + r.audit.score, 0) / validAuditResults.length 
+      : 0
+
+    const supervisionSummary = {
+      totalGenerated,
+      totalAudited,
+      validQuestions: finalQuestions.length,
+      averageScore: Math.round(averageScore * 10) / 10
+    }
+
+    console.log('🎯 [SUPERVISED-ASSESSMENT] 监督式测评生成完成:', supervisionSummary)
+
+    return {
+      questions: finalQuestions,
+      auditResults: allAuditResults,
+      generationAttempts,
+      supervisionSummary
     }
   }
 }

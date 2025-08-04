@@ -4,6 +4,7 @@
       <div class="debug-header">
         <h2>🤖 AI题目生成调试工具</h2>
         <p>此页面专门用于调试AI题目生成功能，可以查看详细的API调用过程和错误信息</p>
+        <p>新增：支持 Kimi + DeepSeek 双模型监督生成，确保题目质量</p>
       </div>
 
       <el-card class="debug-form">
@@ -61,6 +62,22 @@
             </el-radio-group>
           </el-form-item>
 
+          <el-form-item label="生成模式">
+            <el-radio-group v-model="form.mode">
+              <el-radio value="normal">标准模式 (仅Kimi)</el-radio>
+              <el-radio value="supervised">监督模式 (Kimi + DeepSeek)</el-radio>
+            </el-radio-group>
+            <div class="mode-description">
+              <span v-if="form.mode === 'normal'">标准模式：快速生成，可能存在质量问题</span>
+              <span v-if="form.mode === 'supervised'">监督模式：双模型审核，确保数学准确性</span>
+            </div>
+          </el-form-item>
+
+          <el-form-item v-if="form.mode === 'supervised'" label="最大重试">
+            <el-input-number v-model="form.maxRetries" :min="1" :max="5" />
+            <span class="form-tip">质量不达标时的重新生成次数</span>
+          </el-form-item>
+
           <el-form-item>
             <el-button type="primary" @click="generateQuestions" :loading="loading">
               🚀 开始生成题目
@@ -90,10 +107,52 @@
         </div>
       </el-card>
 
+      <!-- 监督生成统计 -->
+      <el-card class="supervision-summary" v-if="supervisionInfo">
+        <template #header>
+          <span>🎯 监督生成统计</span>
+        </template>
+        
+        <el-row :gutter="20">
+          <el-col :span="6">
+            <div class="stat-item">
+              <div class="stat-value">{{ supervisionInfo.supervision_summary.totalGenerated }}</div>
+              <div class="stat-label">总生成题目</div>
+            </div>
+          </el-col>
+          <el-col :span="6">
+            <div class="stat-item">
+              <div class="stat-value">{{ supervisionInfo.supervision_summary.totalAudited }}</div>
+              <div class="stat-label">总审核题目</div>
+            </div>
+          </el-col>
+          <el-col :span="6">
+            <div class="stat-item">
+              <div class="stat-value">{{ supervisionInfo.supervision_summary.validQuestions }}</div>
+              <div class="stat-label">通过审核</div>
+            </div>
+          </el-col>
+          <el-col :span="6">
+            <div class="stat-item">
+              <div class="stat-value">{{ supervisionInfo.supervision_summary.averageScore }}分</div>
+              <div class="stat-label">平均得分</div>
+            </div>
+          </el-col>
+        </el-row>
+        
+        <div class="supervision-details">
+          <p><strong>生成尝试次数：</strong>{{ supervisionInfo.generation_attempts }}</p>
+          <p><strong>通过率：</strong>{{ ((supervisionInfo.supervision_summary.validQuestions / supervisionInfo.supervision_summary.totalGenerated) * 100).toFixed(1) }}%</p>
+        </div>
+      </el-card>
+
       <!-- 生成结果显示 -->
       <el-card class="debug-results" v-if="generatedQuestions.length > 0">
         <template #header>
           <span>✅ 生成结果 ({{ generatedQuestions.length }}道题目)</span>
+          <span v-if="supervisionInfo" class="quality-badge">
+            <el-tag type="success" size="small">已通过DeepSeek质量审核</el-tag>
+          </span>
         </template>
         
         <div class="questions-list">
@@ -208,6 +267,7 @@ const topics = ref<Topic[]>([])
 const logs = ref<LogEntry[]>([])
 const errors = ref<ErrorEntry[]>([])
 const generatedQuestions = ref<GeneratedQuestion[]>([])
+const supervisionInfo = ref<any>(null)
 
 const form = reactive({
   grade: '',
@@ -215,7 +275,9 @@ const form = reactive({
   topicId: '',
   difficulty: '基础',
   questionCount: 3,
-  type: 'practice'
+  type: 'practice',
+  mode: 'normal',
+  maxRetries: 2
 })
 
 // 工具函数
@@ -297,25 +359,43 @@ const generateQuestions = async () => {
 
   loading.value = true
   generatedQuestions.value = []
+  supervisionInfo.value = null
   errors.value = []
   
-  addLog('info', '🚀 开始AI题目生成流程')
+  const modeText = form.mode === 'supervised' ? '监督模式 (Kimi + DeepSeek)' : '标准模式 (仅Kimi)'
+  addLog('info', `🚀 开始AI题目生成流程 - ${modeText}`)
   addLog('info', '生成参数配置', {
     topicId: form.topicId,
     difficulty: form.difficulty,
     questionCount: form.questionCount,
-    type: form.type
+    type: form.type,
+    mode: form.mode,
+    maxRetries: form.maxRetries
   })
 
   try {
-    const endpoint = form.type === 'practice' 
-      ? '/api/debug/generate-practice' 
-      : '/api/debug/generate-assessment'
+    let endpoint = ''
     
-    const payload = {
+    // 根据模式和类型选择端点
+    if (form.mode === 'supervised') {
+      endpoint = form.type === 'practice' 
+        ? '/api/debug/generate-supervised-practice' 
+        : '/api/debug/generate-supervised-assessment'
+    } else {
+      endpoint = form.type === 'practice' 
+        ? '/api/debug/generate-practice' 
+        : '/api/debug/generate-assessment'
+    }
+    
+    const payload: any = {
       topic_id: form.topicId,
       difficulty: form.difficulty,
       question_count: form.questionCount
+    }
+
+    // 监督模式需要添加重试次数
+    if (form.mode === 'supervised') {
+      payload.max_retries = form.maxRetries
     }
 
     addLog('info', `调用API端点: ${endpoint}`)
@@ -337,8 +417,38 @@ const generateQuestions = async () => {
 
     if (response.ok) {
       generatedQuestions.value = result.data || []
-      addLog('success', `✅ 成功生成${generatedQuestions.value.length}道题目`)
-      ElMessage.success(`成功生成${generatedQuestions.value.length}道题目`)
+      
+      // 如果是监督模式，保存监督信息
+      if (form.mode === 'supervised' && result.supervision_info) {
+        supervisionInfo.value = result.supervision_info
+        addLog('success', '📊 监督生成统计', result.supervision_info.supervision_summary)
+        
+        // 显示审核详情
+        if (result.supervision_info.audit_results && result.supervision_info.audit_results.length > 0) {
+          addLog('info', `🔍 审核了${result.supervision_info.audit_results.length}道题目`)
+          
+          const passedAudits = result.supervision_info.audit_results.filter((audit: any) => audit.audit.isValid)
+          const failedAudits = result.supervision_info.audit_results.filter((audit: any) => !audit.audit.isValid)
+          
+          addLog('success', `✅ 通过审核: ${passedAudits.length}道`)
+          if (failedAudits.length > 0) {
+            addLog('warn', `❌ 未通过审核: ${failedAudits.length}道`)
+            
+            // 显示未通过审核的主要问题
+            const commonIssues = failedAudits.flatMap((audit: any) => audit.audit.issues)
+            if (commonIssues.length > 0) {
+              addLog('warn', '常见问题', commonIssues.slice(0, 5))
+            }
+          }
+        }
+      }
+      
+      const successMessage = form.mode === 'supervised' 
+        ? `成功生成${generatedQuestions.value.length}道高质量题目 (已通过DeepSeek审核)`
+        : `成功生成${generatedQuestions.value.length}道题目`
+      
+      addLog('success', `✅ ${successMessage}`)
+      ElMessage.success(successMessage)
     } else {
       addError('生成失败', result.message || '未知错误')
       addLog('error', '生成题目失败', result)
@@ -358,6 +468,7 @@ const clearLogs = () => {
   logs.value = []
   errors.value = []
   generatedQuestions.value = []
+  supervisionInfo.value = null
   ElMessage.info('日志已清空')
 }
 </script>
@@ -506,5 +617,53 @@ const clearLogs = () => {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* 新增样式 */
+.mode-description {
+  margin-top: 5px;
+  font-size: 12px;
+  color: #666;
+}
+
+.form-tip {
+  margin-left: 10px;
+  font-size: 12px;
+  color: #999;
+}
+
+.supervision-summary {
+  margin-bottom: 20px;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #409EFF;
+  margin-bottom: 5px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #666;
+}
+
+.supervision-details {
+  margin-top: 15px;
+  padding: 10px;
+  background: #f0f9ff;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.quality-badge {
+  margin-left: 10px;
 }
 </style>

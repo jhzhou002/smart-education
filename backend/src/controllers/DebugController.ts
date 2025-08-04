@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import { Topic } from '../models/Topic'
 import { Chapter } from '../models/Chapter'
 import { KimiService } from '../services/KimiService'
+import { DeepSeekService } from '../services/DeepSeekService'
 
 export class DebugController {
   /**
@@ -201,18 +202,196 @@ export class DebugController {
   }
 
   /**
+   * 监督式练习题目生成（Kimi生成 + DeepSeek审核）
+   */
+  static async generateSupervisedPracticeQuestions(req: Request, res: Response) {
+    try {
+      console.log('🔄 [SUPERVISED-DEBUG] 收到监督式练习题目生成请求')
+      console.log('🔄 [SUPERVISED-DEBUG] 请求参数:', req.body)
+
+      const userId = req.user?.userId
+      if (!userId) {
+        return res.status(401).json({ message: '用户未认证' })
+      }
+
+      const { topic_id, difficulty = '基础', question_count = 3, max_retries = 2 } = req.body
+
+      if (!topic_id) {
+        return res.status(400).json({ message: '知识点ID不能为空' })
+      }
+
+      const topic = await Topic.findOne({
+        where: { id: topic_id, is_active: true },
+        include: [
+          {
+            model: Chapter,
+            as: 'chapter',
+            attributes: ['id', 'name', 'grade']
+          }
+        ]
+      })
+
+      if (!topic) {
+        return res.status(404).json({ message: '知识点不存在' })
+      }
+
+      console.log('🔄 [SUPERVISED-DEBUG] 开始监督式生成...')
+
+      // 调用监督式生成方法
+      const result = await KimiService.generateSupervisedPracticeQuestions(
+        topic.name,
+        difficulty,
+        Number(question_count),
+        Number(max_retries)
+      )
+
+      console.log('🔄 [SUPERVISED-DEBUG] 监督式生成完成')
+
+      res.json({
+        message: '监督式生成成功',
+        data: result.questions,
+        supervision_info: {
+          generation_attempts: result.generationAttempts,
+          supervision_summary: result.supervisionSummary,
+          audit_results: result.auditResults
+        },
+        debug_info: {
+          topic_id: topic_id,
+          topic_name: topic.name,
+          chapter_name: topic.chapter?.name,
+          difficulty,
+          question_count: Number(question_count),
+          max_retries: Number(max_retries)
+        }
+      })
+
+    } catch (error: any) {
+      console.error('🔄 [SUPERVISED-DEBUG] 监督式生成失败:', error)
+      
+      res.status(500).json({ 
+        message: '监督式生成失败',
+        error: error.message,
+        error_stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      })
+    }
+  }
+
+  /**
+   * 监督式测评题目生成（Kimi生成 + DeepSeek审核）
+   */
+  static async generateSupervisedAssessmentQuestions(req: Request, res: Response) {
+    try {
+      console.log('🔄 [SUPERVISED-ASSESSMENT-DEBUG] 收到监督式测评题目生成请求')
+
+      const userId = req.user?.userId
+      if (!userId) {
+        return res.status(401).json({ message: '用户未认证' })
+      }
+
+      const { topic_id, question_count = 5, max_retries = 2 } = req.body
+
+      if (!topic_id) {
+        return res.status(400).json({ message: '知识点ID不能为空' })
+      }
+
+      const topic = await Topic.findOne({
+        where: { id: topic_id, is_active: true },
+        include: [
+          {
+            model: Chapter,
+            as: 'chapter',
+            attributes: ['id', 'name', 'grade']
+          }
+        ]
+      })
+
+      if (!topic) {
+        return res.status(404).json({ message: '知识点不存在' })
+      }
+
+      // 获取章节下的所有知识点名称
+      const allTopics = await Topic.findAll({
+        where: { 
+          chapter_id: topic.chapter_id,
+          is_active: true 
+        },
+        attributes: ['name']
+      })
+
+      const topicNames = allTopics.map(t => t.name)
+
+      console.log('🔄 [SUPERVISED-ASSESSMENT-DEBUG] 开始监督式测评生成...')
+
+      // 调用监督式测评生成方法
+      const result = await KimiService.generateSupervisedAssessmentQuestions(
+        topic.chapter?.name || '数学',
+        topicNames,
+        topic.chapter?.grade || '高一',
+        Number(question_count),
+        Number(max_retries)
+      )
+
+      console.log('🔄 [SUPERVISED-ASSESSMENT-DEBUG] 监督式测评生成完成')
+
+      res.json({
+        message: '监督式测评生成成功',
+        data: result.questions,
+        supervision_info: {
+          generation_attempts: result.generationAttempts,
+          supervision_summary: result.supervisionSummary,
+          audit_results: result.auditResults
+        },
+        debug_info: {
+          topic_id: topic_id,
+          topic_name: topic.name,
+          chapter_name: topic.chapter?.name,
+          all_topics: topicNames,
+          question_count: Number(question_count),
+          max_retries: Number(max_retries)
+        }
+      })
+
+    } catch (error: any) {
+      console.error('🔄 [SUPERVISED-ASSESSMENT-DEBUG] 监督式测评生成失败:', error)
+      
+      res.status(500).json({ 
+        message: '监督式测评生成失败',
+        error: error.message,
+        error_stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      })
+    }
+  }
+
+  /**
    * 获取API配置信息
    */
   static async getApiInfo(req: Request, res: Response) {
     try {
       console.log('🔧 [DEBUG] 获取API配置信息')
       
+      // 测试DeepSeek API状态
+      let deepseekStatus: any
+      try {
+        deepseekStatus = await DeepSeekService.getApiStatus()
+      } catch (error: any) {
+        deepseekStatus = {
+          status: 'error',
+          message: `DeepSeek API测试失败: ${error.message}`
+        }
+      }
+
       const info = {
         kimi_api_configured: !!process.env.KIMI_API_KEY,
         kimi_base_url: process.env.KIMI_BASE_URL,
-        api_key_preview: process.env.KIMI_API_KEY 
+        kimi_api_key_preview: process.env.KIMI_API_KEY 
           ? `${process.env.KIMI_API_KEY.substring(0, 10)}...` 
           : '未配置',
+        deepseek_api_configured: !!process.env.DEEPSEEK_API_KEY,
+        deepseek_base_url: process.env.DEEPSEEK_BASE_URL,
+        deepseek_api_key_preview: process.env.DEEPSEEK_API_KEY 
+          ? `${process.env.DEEPSEEK_API_KEY.substring(0, 10)}...` 
+          : '未配置',
+        deepseek_status: deepseekStatus,
         node_env: process.env.NODE_ENV,
         server_time: new Date().toISOString()
       }
