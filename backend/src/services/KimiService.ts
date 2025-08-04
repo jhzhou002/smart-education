@@ -4,7 +4,7 @@ import { config } from 'dotenv'
 config()
 
 const KIMI_API_KEY = process.env.KIMI_API_KEY || ''
-const KIMI_BASE_URL = process.env.KIMI_BASE_URL || 'https://api.moonshot.cn/v1'
+const KIMI_BASE_URL = process.env.KIMI_BASE_URL || 'https://api.moonshot.cn'
 
 interface KimiResponse {
   choices: Array<{
@@ -327,7 +327,7 @@ export class KimiService {
 
     try {
       console.log('🔧 [KIMI DEBUG] 发送API请求...')
-      console.log('🔧 [KIMI DEBUG] 请求URL:', `${KIMI_BASE_URL}/chat/completions`)
+      console.log('🔧 [KIMI DEBUG] 请求URL:', `${KIMI_BASE_URL}/v1/chat/completions`)
       console.log('🔧 [KIMI DEBUG] 模型:', 'moonshot-v1-8k')
       console.log('🔧 [KIMI DEBUG] 提示词长度:', prompt.length)
 
@@ -349,7 +349,7 @@ export class KimiService {
 
       console.log('🔧 [KIMI DEBUG] 请求数据:', JSON.stringify(requestData, null, 2))
 
-      const response = await this.apiClient.post<KimiResponse>('/chat/completions', requestData)
+      const response = await this.apiClient.post<KimiResponse>('/v1/chat/completions', requestData)
       
       console.log('🔧 [KIMI DEBUG] 收到响应状态:', response.status)
       console.log('🔧 [KIMI DEBUG] 响应头:', response.headers)
@@ -476,7 +476,7 @@ export class KimiService {
 
     try {
       console.log('🔧 [KIMI DEBUG] 发送API请求...')
-      console.log('🔧 [KIMI DEBUG] 请求URL:', `${KIMI_BASE_URL}/chat/completions`)
+      console.log('🔧 [KIMI DEBUG] 请求URL:', `${KIMI_BASE_URL}/v1/chat/completions`)
       console.log('🔧 [KIMI DEBUG] 模型:', 'moonshot-v1-8k')
       console.log('🔧 [KIMI DEBUG] 提示词长度:', prompt.length)
 
@@ -498,7 +498,7 @@ export class KimiService {
 
       console.log('🔧 [KIMI DEBUG] 请求数据:', JSON.stringify(requestData, null, 2))
 
-      const response = await this.apiClient.post<KimiResponse>('/chat/completions', requestData)
+      const response = await this.apiClient.post<KimiResponse>('/v1/chat/completions', requestData)
       
       console.log('🔧 [KIMI DEBUG] 收到响应状态:', response.status)
       console.log('🔧 [KIMI DEBUG] 响应头:', response.headers)
