@@ -238,7 +238,7 @@ export class PracticeController {
 
       // 更新题目统计
       console.log('📊 更新题目统计...')
-      await this.updateQuestionStats(question_id)
+      await PracticeController.updateQuestionStats(question_id)
       console.log('✅ 题目统计更新成功')
 
       res.json({
